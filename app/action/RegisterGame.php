@@ -2,43 +2,33 @@
 
 namespace app\action;
 
-use app\domain\service\DomainServiceGame;
-use app\service\NextId;
-use core\EventManager\EventManager;
+use app\domain\entities\Game;
+use app\service\IO;
+use app\service\View;
 
 class RegisterGame
 {
-    private NextId $nextId;
-    private DomainServiceGame $serviceGame;
-    private EventManager $eventManager;
+    private $view;
+    private $io;
+    private Game $game;
 
-    public function __construct(NextId $nextId, DomainServiceGame $serviceGame, EventManager $eventManager)
+    public function __construct(View $view, IO $io, Game $game)
     {
-        $this->nextId = $nextId;
-        $this->serviceGame = $serviceGame;
-        $this->eventManager = $eventManager;
+        $this->view = $view;
+        $this->io = $io;
+        $this->game = $game;
     }
 
-    public function handle($event, $params = []){
-        $run = true;
-        while ($run){
+    public function handle($app): mixed
+    {
+        $input = $this->io->getNumberPositiveOrZero(PHP_EOL . "Введите количество участников\nили 0 для выхода из игры: ");
 
-            echo PHP_EOL;
-            echo "Введите количество участников\nили 0 для выхода из игры: ";
-            $input = trim(readline());
-
-            if (is_numeric($input) and $input >= 0) {
-                $run = false;
-            }
+        if ($input === 0) {
+            $app->stop();
+            return false;
         }
 
-        $input = (int)$input;
-
-        if ($input == 0){
-            $this->eventManager->trigger('appStop');
-        } else{
-            $id = $this->nextId->getId();
-            $this->serviceGame->create($id, $input);
-        }
+        $this->game->setGamers($input);
+        return $this->game;
     }
 }

@@ -2,16 +2,15 @@
 
 namespace app\service;
 
-use core\Container\Container;
-use core\EventManager\EventManager;
+use Exception;
 
-class WikiApi
+class Wiki
 {
     private array $config;
 
-    public function __construct(Container $container, EventManager $eventManager)
+    public function __construct($config)
     {
-//        $this->config = $container->get('config')['wiki'];
+        $this->config = $config;
     }
 
     public function getRandomPage()
@@ -44,22 +43,22 @@ class WikiApi
         $output = curl_exec($ch);
         curl_close($ch);
 
-//        if (! curl_getinfo($ch, CURLINFO_HTTP_CODE) == 200) {
-//            throw new \Exception("Нет связи с сетью!");
-//        }
-
         return json_decode($output, true)['query'];
     }
 
     private function parseRequestTitles($serverRequest, $paramKey)
     {
         $res = [];
-        if (!empty($serverRequest)) {
-            foreach ($serverRequest as $k => $v) {
-                foreach ($serverRequest[$k][$paramKey] as $key => $val) {
-                    $res[] = $serverRequest[$k][$paramKey][$key]['title'];
+        try {
+            if (!empty($serverRequest)) {
+                foreach ($serverRequest as $k => $v) {
+                    foreach ($serverRequest[$k][$paramKey] as $key => $val) {
+                        $res[] = $serverRequest[$k][$paramKey][$key]['title'];
+                    }
                 }
             }
+        }catch(Exception $e){
+            return [];
         }
 
         return $res;

@@ -1,11 +1,8 @@
 <?php
 
-/**
- * @var core\Container\Container $container
- */
 return [
     'wiki' => [
-        'urlApi' => 'https://' . $container->get('config')['lang'] . '.wikipedia.org/w/api.php',
+        'urlApi' => "https://{$container->get('config')['lang']}.wikipedia.org/w/api.php",
         'wikiRandomPage' => [
             "action" => "query",
             "format" => "json",

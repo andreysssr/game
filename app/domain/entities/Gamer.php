@@ -4,30 +4,34 @@ namespace app\domain\entities;
 
 class Gamer
 {
-    use EventTrait;
-
-    private mixed $id;
     private string $name;
     private string $urlStart;
+    private string $urlSelected;
     private string $urlStop;
+    private array $linksToUrlStop;
     private int $countSteps = 0;
     private int $countStepsMin = 0;
+    private bool $linkFound = false;
     private bool $activeGamer = true;
-    // массив ссылок на финишную страницу
-    private array $linksToUrlStop;
+    private bool $stopPlay = false;
 
-    public function __construct($id, $dto)
+    public function __construct($name, $urls, array $linksToUrlStop)
     {
-        $this->id = $id;
-        $this->name = $dto->name;
-        $this->urlStart = $dto->urlStart;
-        $this->urlStop = $dto->urlStop;
-        $this->linksToUrlStop = $dto->linksToUrlStop;
+        $this->name = $name;
+        $this->urlStart = $urls['start'];
+        $this->urlStop = $urls['stop'];
+        $this->urlSelected = $urls['start'];
+        $this->linksToUrlStop = $linksToUrlStop;
     }
 
-    public function getId(): mixed
+    public function isActive()
     {
-        return $this->id;
+        return ($this->activeGamer) && (!$this->stopPlay);
+    }
+
+    public function stopPlay():void
+    {
+        $this->stopPlay = true;
     }
 
     public function getName(): string
@@ -35,40 +39,59 @@ class Gamer
         return $this->name;
     }
 
-    public function getCountSteps(): int
+    public function setUrlSelected(string $urlSelected): void
     {
-        return $this->countSteps;
+        $this->urlSelected = $urlSelected;
+
+        $this->changeCountSteps();
     }
 
-    public function getCountStepsMin(): int
-    {
-        return $this->countStepsMin;
+    public function isFinished(){
+        return $this->stopPlay;
     }
 
-    public function getUrlStart(): string
+    public function finished()
     {
-        return $this->urlStart;
+        $this->activeGamer = false;
+
+//        $this->countStepsMin = ($this->countStepsMin == 0) ? $this->countSteps : $this->countStepsMin;
     }
 
-    public function getUrlStop(): string
+    private function changeCountSteps()
+    {
+        ++$this->countSteps;
+    }
+
+    public function getUrlStop()
     {
         return $this->urlStop;
     }
 
-    public function getLinksToUrlStop(): array
+    public function getUrlSelected()
     {
+        return $this->urlSelected ?? $this->urlStart;
+    }
+
+    public function getLinksToUrlStop(){
         return $this->linksToUrlStop;
     }
 
-    public function isActiveGamer(): bool
+    public function isLinkFound()
     {
-        return $this->activeGamer;
+        return $this->linkFound;
     }
 
-    public function changeStatusGamer(): void
+    public function changeLinkFound()
     {
-        $this->activeGamer = false;
+        $this->linkFound = true;
+        $this->countStepsMin = $this->countSteps + 1;
+    }
 
-        $this->registerEvent("GamerFinished", $this);
+    public function getCountSteps(){
+        return $this->countSteps;
+    }
+
+    public function getCountStepsMin(){
+        return ($this->countStepsMin == 0) ? $this->countSteps : $this->countStepsMin;
     }
 }

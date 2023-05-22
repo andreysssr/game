@@ -3,119 +3,122 @@
 namespace app\domain\entities;
 
 use app\service\CheckLinks;
-use app\service\WikiApi;
-use core\Container\Container;
+use app\service\Wiki;
 
 class Game
 {
-    use EventTrait;
-
-    private mixed $id;
-    private int $countGamers = 0; // для цикла выбора следующих игроков
+    private int $countGamers;
     private int $countActiveGamers = 0;
-    private int $currentGamer = 0;
-    private array $listNextGamers = [];
+    private Wiki $wiki;
+    private CheckLinks $checkLinks;
+    private $registerGamers = [];
+//    private bool $activeGame = true;
 
-    private $wiki;
-    private $checkLinks;
+    private $currentGamer = 0;
 
-    public function __construct($id, $countGamers, WikiApi $wiki, CheckLinks $checkLinks)
+    public function __construct(Wiki $wiki, CheckLinks $checkLinks)
     {
-        $this->id = $id;
-        $this->countGamers = $countGamers;
-        $this->countActiveGamers = $countGamers;
-
         $this->wiki = $wiki;
         $this->checkLinks = $checkLinks;
     }
 
-    public function getId(){
-        return $this->id;
+    public function setGamers($countGamers)
+    {
+        $this->countGamers = $countGamers;
+        $this->countActiveGamers = $countGamers;
     }
 
-    public function addGamer(Gamer $gamer): void
+    public function isActive()
     {
-        $this->listNextGamers[] = ['active' => true, 'name' => $gamer->getName(), 'id' => $gamer->getId()];
+//        return $this->activeGame;
+        return $this->countActiveGamers > 0;
     }
 
-    public function changeCountActiveGamers(): bool
+    public function alloweRegisterGamer()
     {
-        return --$this->countActiveGamers;
-
-        // проверка активна ли игра
-        // если не активна - регистрация события - GameOver
-        // регистрация события уменьшения количества игроков
+        return !($this->countGamers == count($this->registerGamers));
     }
 
-    public function isActiveGame(): bool
+    public function addGamers(Gamer $gamer)
     {
-        return !($this->countActiveGamers == 0);
+        if (!$this->alloweRegisterGamer()) {
+            throw new \Exception("Добавление игроков не доступно");
+        }
+
+        $this->registerGamers[] = $gamer;
+//        ++$this->countActiveGamers;
     }
 
-    public function getPlayParams()
+    public function getNewStepProperty()
     {
-        $response = [
-            "idGamer" => 7, // $listNextGamers
-            "listUrl" => [],
-        ];
+        $currentGamer = $this->registerGamers[$this->currentGamer];
 
-//        $this->nextStepGame();
-//
-//        if (! $this->isActiveGame()){
-//            // регистрируем сообщение - игра остановлена
-//        }
-/*
-
-[ checkPlayParams() ]
-получаем id текущего игрока
-получаем его выбранную страницу
-
-получаем список ссылок с выбранной страницы
-    проверяем перекрёстно каждую полученную ссылку на присутствие в списке
-        если нашлась
-            останавливаем проверку
-            регистрируем событие - для записи минимального шага
-выводим список ссылок с выбранной страницы
-
-проверяем (выбранная страница == финишная страница)
-    если да
-        регистрируем сообщение
-            для игрока меняем active на false
-            уменьшаем количество активных игроков в игре
-            проверяем статус игры
-
-проверяем статус игры
-    если игра не активна
-        регистрируем сообщение - игра остановлена
-*/
-    }
-
-    public function checkPlayParams($params)
-    {
-        $params = [
-            "idGame" => $this->getId(),
-            "idGamer" => 7, // $listNextGamers
-            "selectedUrl" => "",
-        ];
-    }
-
-    public function getResultGame()
-    {
         return [
-//            [$this->]
+            'id' => $this->currentGamer,
+            'name' => $currentGamer->getName(),
+            'urlStop' => $currentGamer->getUrlStop(),
+            'listUrl' => $this->wiki->getLinksOnPage($currentGamer->getUrlSelected()),
         ];
     }
 
-/*
+    public function setStepProperty($property): void
+    {
+        $currentGamer = $this->registerGamers[$this->currentGamer];
+        $currentGamer->setUrlSelected($property['urlSelected']);
 
-if ($game->isActiveGame()){
-    $response = $game->getPlayParams()
-    $game->setPlayParams($request)
-}else{
-    $response = $game->getResultGame()
-}
+        if (!$currentGamer->isLinkFound()) {
+            if ($this->checkLinks->check($currentGamer->getLinksToUrlStop(), $property['listUrl'])) {
+                $currentGamer->changeLinkFound();
+            }
+        }
 
-*/
+        if ($property['urlSelected'] == $currentGamer->getUrlStop()) {
+            $currentGamer->finished();
 
+            --$this->countActiveGamers;
+        }
 
+        $this->changeCurrentGamer();
+    }
+
+    public function stopPlayGamer($id){
+        $this->registerGamers[$id]->stopPlay();
+        --$this->countActiveGamers;
+    }
+
+    private function changeCurrentGamer()
+    {
+        if (($this->currentGamer + 1) == count($this->registerGamers))
+        {
+            for($i = 0, $iMax = count($this->registerGamers); $i< $iMax; $i++){
+                if($this->registerGamers[$i]->isActive()){
+                    $this->currentGamer = $i;
+                    break;
+                }
+            }
+        }else{
+            for($i = $this->currentGamer + 1, $iMax = count($this->registerGamers); $i < $iMax; $i++){
+                if($this->registerGamers[$i]->isActive()){
+                    $this->currentGamer = $i;
+                    break;
+                }
+            }
+        }
+    }
+
+    public function getResultGame(): mixed
+    {
+        $resultGame = [];
+
+        foreach ($this->registerGamers as $id => $gamer){
+            $resultGame[$id] = [
+                $gamer->getName(),
+                $gamer->isFinished() ? 'да' : 'нет',
+                (string) $gamer->getCountSteps(),
+                (string) $gamer->getCountStepsMin(),
+            ];
+        }
+
+        return $resultGame;
+    }
 }

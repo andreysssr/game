@@ -8,7 +8,7 @@ class CheckLinks
     {
     }
 
-    public static function check(array $currentLinks, array $linksToUrlStop):bool
+    public function check(array $currentLinks, array $linksToUrlStop):bool
     {
         return !empty(array_intersect($currentLinks, $linksToUrlStop));
     }
